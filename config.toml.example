@@ -1,0 +1,17 @@
+# This is just an example.
+# Please modify it according to your needs.
+
+[server]
+domain = "yfaming.com"
+listen_addr = "127.0.0.1:1405"
+log_dir = "/data/logs/thor"
+
+
+[[users]]
+name = "yfaming"
+# For security reasons, please use readonly NWC URIs whenever possible.
+# Every user should have at least one NWC URI. Otherwise thor will exit with an error.
+nwcs = [
+    "nostr+walletconnect://22569d8f736d38231b980d6d4dca5105e72476e83ec756317287da120c8ff520?relay=wss%3A%2F%2Frelay-nwc.rizful.com%2Fv1&secret=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff&lud16=fffffffff%40rizful.com",
+    # "nostr+walletconnect://ba80990666ef0b6f4ba5059347beb13242921e54669e680064ca755256a1e3a6?relay=wss%3A%2F%2Frelay.coinos.io&secret=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff&lud16=fffffff@coinos.io",
+]
