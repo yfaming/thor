@@ -12,6 +12,7 @@ use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use tower_http::cors::CorsLayer;
 
 pub struct AppState {
     domain: String,
@@ -49,6 +50,7 @@ pub async fn run_http_server(config: &Config) -> Result<()> {
     let app = Router::new()
         .route("/.well-known/lnurlp/{username}", get(get_lnurlp_info))
         .route("/lnurlp/{username}", get(create_invoice))
+        .layer(CorsLayer::permissive())
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(&config.server.listen_addr).await?;
