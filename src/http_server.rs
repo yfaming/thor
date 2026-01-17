@@ -45,7 +45,7 @@ impl AppState {
 // - [LUD-16: Paying to static internet identifiers](https://github.com/lnurl/luds/blob/luds/16.md)
 // - [LUD-06: payRequest base spec](https://github.com/lnurl/luds/blob/luds/06.md)
 pub async fn run_http_server(config: &Config) -> Result<()> {
-    let state = Arc::new(AppState::new(&config)?);
+    let state = Arc::new(AppState::new(config)?);
 
     let app = Router::new()
         .route("/.well-known/lnurlp/{username}", get(get_lnurlp_info))
@@ -64,7 +64,7 @@ async fn get_lnurlp_info(
     State(state): State<Arc<AppState>>,
     Path(username): Path<String>,
 ) -> Result<Json<LnUrlPayInfo>, HttpError> {
-    if state.users.get(&username).is_none() {
+    if !state.users.contains_key(&username) {
         let e = Lud06Error::new(format!("user {} not found", username));
         return Err(HttpError::new(StatusCode::BAD_REQUEST, e));
     }

@@ -6,7 +6,7 @@ use tracing_subscriber::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let config_path = match args().skip(1).next() {
+    let config_path = match args().nth(1) {
         Some(path) => path,
         None => "config.toml".to_string(),
     };
