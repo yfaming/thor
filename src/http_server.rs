@@ -176,3 +176,97 @@ pub struct InvoiceResponse {
 struct Amount {
     amount: u64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::response::IntoResponse;
+    use std::collections::HashMap;
+
+    struct DummyCreator {
+        result: std::result::Result<String, String>,
+    }
+
+    #[async_trait::async_trait]
+    impl InvoiceCreator for DummyCreator {
+        async fn create_invoice(
+            &self,
+            _amount_msat: u64,
+            _description_hash: &str,
+        ) -> Result<String> {
+            match &self.result {
+                Ok(invoice) => Ok(invoice.clone()),
+                Err(msg) => Err(anyhow::anyhow!("{msg}")),
+            }
+        }
+    }
+
+    fn create_app_state(user: &str, creators: Vec<Box<dyn InvoiceCreator>>) -> AppState {
+        let mut users = HashMap::new();
+        users.insert(user.to_string(), creators);
+        AppState {
+            domain: "example.com".to_string(),
+            users,
+        }
+    }
+
+    #[tokio::test]
+    async fn get_lnurlp_info_unknown_user_returns_bad_request() {
+        let state = Arc::new(AppState {
+            domain: "example.com".to_string(),
+            users: HashMap::new(),
+        });
+        let res = get_lnurlp_info(State(state), Path("alice".to_string())).await;
+        assert!(res.is_err());
+        let response = res.unwrap_err().into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn generate_metadata_includes_identifier() -> Result<()> {
+        let creator = Box::new(DummyCreator {
+            result: Ok("lnbc1test".to_string()),
+        });
+        let state = create_app_state("alice", vec![creator]);
+        let metadata = generate_metadata(&state, "alice")?;
+        let parsed: Vec<Vec<String>> = serde_json::from_str(&metadata).unwrap();
+        assert!(parsed.iter().any(|entry| {
+            entry.len() == 2 && entry[0] == "text/identifier" && entry[1] == "alice@example.com"
+        }));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn create_invoice_rejects_zero_amount() {
+        let creator = Box::new(DummyCreator {
+            result: Ok("lnbc1test".to_string()),
+        });
+        let state = Arc::new(create_app_state("alice", vec![creator]));
+        let err = create_invoice(
+            State(state),
+            Path("alice".to_string()),
+            Query(Amount { amount: 0 }),
+        )
+        .await
+        .unwrap_err();
+        let response = err.into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn create_invoice_returns_invoice() {
+        let creator = Box::new(DummyCreator {
+            result: Ok("lnbc1test".to_string()),
+        });
+        let state = Arc::new(create_app_state("alice", vec![creator]));
+        let response = create_invoice(
+            State(state),
+            Path("alice".to_string()),
+            Query(Amount { amount: 1500 }),
+        )
+        .await
+        .unwrap();
+        assert_eq!(response.0.pr, "lnbc1test");
+        assert!(response.0.routes.is_empty());
+    }
+}
